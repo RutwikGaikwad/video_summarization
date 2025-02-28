@@ -1,0 +1,36 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Summarized text</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="{% static 'css/styles.css' %}" rel="stylesheet" />
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Text: </h1>
+        <p>{{ text }}</p>
+    </div>
+    <br>
+    <div class="container mt-5">
+        <h1>Summary: </h1>
+        <p>{{ summarized_text }}</p>
+    </div>
+    <div class="container mt-5">
+        <h1>Accuracy Metrics:</h1>
+        <p><strong>ROUGE-1:</strong> {{ accuracy.ROUGE-1 }}%</p>
+        <p><strong>ROUGE-2:</strong> {{ accuracy.ROUGE-2 }}%</p>
+        <p><strong>ROUGE-L:</strong> {{ accuracy.ROUGE-L }}%</p>
+        <p><strong>Cosine Similarity:</strong> {{ accuracy.Cosine Similarity }}%</p>
+    </div>
+
+    <div class="container mt-3">
+        <a href="{% url 'download_summary' %}?summary={{ summarized_text }}" class="btn btn-primary">
+            Download Summary as PDF
+        </a>
+    </div>
+</body>
+</html>

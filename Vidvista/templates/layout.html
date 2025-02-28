@@ -1,0 +1,29 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %} VidVista - Home {% endblock title %}</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+    {% comment %} <nav class="navbar">
+        <a href="index.html">Home</a>
+        <a href="about.html">About Us</a>
+        <a href="login.html">Login</a>
+    </nav> {% endcomment %}
+
+    <header>
+        <h1>Welcome to VidVista</h1>
+        <p>Choose an option to continue</p>
+    </header>
+    
+    {% block content %}{% endblock %}
+
+    <footer>
+        <p>&copy; 2025 VidVista</p>
+    </footer>
+</body>
+</html>
