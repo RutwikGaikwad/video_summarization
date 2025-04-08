@@ -11,6 +11,10 @@
 </head>
 <body>
     <div class="container mt-5">
+        <h1>Title: </h1>
+        <p>{{title}}</p>
+    </div>
+    <div class="container mt-5">
         <h1>Text: </h1>
         <p>{{ text }}</p>
     </div>
@@ -20,17 +24,16 @@
         <p>{{ summarized_text }}</p>
     </div>
     <div class="container mt-5">
-        <h1>Accuracy Metrics:</h1>
-        <p><strong>ROUGE-1:</strong> {{ accuracy.ROUGE-1 }}%</p>
-        <p><strong>ROUGE-2:</strong> {{ accuracy.ROUGE-2 }}%</p>
-        <p><strong>ROUGE-L:</strong> {{ accuracy.ROUGE-L }}%</p>
-        <p><strong>Cosine Similarity:</strong> {{ accuracy.Cosine Similarity }}%</p>
+        <h2>Summary Accuracy</h2>
+        <p>ROUGE Score: {{ accuracy_scores.rouge_score }}</p>
+        <p>Cosine Similarity: {{ accuracy_scores.cosine_similarity }}</p>
+        <p>Final Accuracy: {{ accuracy_scores.final_accuracy }}</p>
     </div>
 
     <div class="container mt-3">
         <a href="{% url 'download_summary' %}?summary={{ summarized_text }}" class="btn btn-primary">
             Download Summary as PDF
-        </a>
+        </a>
     </div>
 </body>
 </html>

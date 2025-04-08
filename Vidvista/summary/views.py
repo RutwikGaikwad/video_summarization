@@ -8,14 +8,42 @@ from .video import summariza_text
 import moviepy.editor as mp
 from django.conf import settings
 import os
-import speech_recognition as sr
 import assemblyai as aai
-from rouge import Rouge
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
 from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.utils import simpleSplit
+import yt_dlp
 
-# Create your views here.
+# Accuracy Evaluation Imports
+from rouge_score import rouge_scorer
+from sentence_transformers import SentenceTransformer, util
+
+# Load Sentence Transformer Model (Optimized)
+model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
+
+# Function to Evaluate Summary Accuracy
+def evaluate_summary(original_text, summary_text):
+    """
+    Evaluates the accuracy of a summary using ROUGE-L and Cosine Similarity.
+    Uses faster sentence-transformers for embedding similarity.
+    """
+    # Compute ROUGE-L score
+    scorer = rouge_scorer.RougeScorer(['rougeL'], use_stemmer=True)
+    rouge_score = scorer.score(original_text, summary_text)['rougeL'].fmeasure * 100
+
+    # Compute Cosine Similarity with Sentence Transformers
+    original_embedding = model.encode(original_text, convert_to_tensor=True)
+    summary_embedding = model.encode(summary_text, convert_to_tensor=True)
+    cosine_score = util.pytorch_cos_sim(original_embedding, summary_embedding).item() * 100
+
+    # Combine scores (50% weight to each)
+    final_score = (rouge_score + cosine_score) / 2
+    return {
+        "rouge_score": rouge_score,
+        "cosine_similarity": cosine_score,
+        "final_accuracy": final_score
+    }
+
 
 # download summary
 def download_summary(request):
@@ -26,131 +54,137 @@ def download_summary(request):
     response['Content-Disposition'] = 'attachment; filename="summary.pdf"'
 
     # Generate PDF
-    pdf = canvas.Canvas(response)
+    pdf = canvas.Canvas(response, pagesize=letter)
     pdf.setFont("Helvetica", 12)
     pdf.drawString(100, 750, "Summarized Text:")
-    
-    # Split text into lines for better formatting
+
+    # Handle text wrapping
+    max_width = 400  # Maximum width for text (adjust as needed)
     y_position = 730
+    line_height = 20  # Space between lines
+
     for line in summary_text.split('\n'):
-        pdf.drawString(100, y_position, line)
-        y_position -= 20
+        wrapped_lines = simpleSplit(line, "Helvetica", 12, max_width)
+        for wrapped_line in wrapped_lines:
+            pdf.drawString(100, y_position, wrapped_line)
+            y_position -= line_height
+            if y_position < 50:  # Start a new page if the content exceeds the page
+                pdf.showPage()
+                pdf.setFont("Helvetica", 12)
+                y_position = 750
 
     pdf.showPage()
     pdf.save()
 
     return response
 
-# summary evaluation function
-def evaluate_summary(original_text, summary_text):
-  # ROUGE Score Calculation
-  rouge = Rouge()
-  scores = rouge.get_scores(summary_text, original_text)  # Compare summary with original text
-  
-  rouge_1 = scores[0]['rouge-1']['f']  # ROUGE-1 F1-score (unigrams)
-  rouge_2 = scores[0]['rouge-2']['f']  # ROUGE-2 F1-score (bigrams)
-  rouge_l = scores[0]['rouge-l']['f']  # ROUGE-L F1-score (longest common subsequence)
-
-  # Cosine Similarity Calculation
-  vectorizer = TfidfVectorizer().fit_transform([original_text, summary_text])
-  cosine_sim = cosine_similarity(vectorizer[0], vectorizer[1])[0][0]  # Compute similarity score
-
-  # Convert to percentage
-  accuracy = {
-    "ROUGE-1": round(rouge_1 * 100, 2),
-    "ROUGE-2": round(rouge_2 * 100, 2),
-    "ROUGE-L": round(rouge_l * 100, 2),
-    "Cosine Similarity": round(cosine_sim * 100, 2)
-  }
-
-  return accuracy
-
-
-
-
-# summarization function
+# Function to Summarize Text
 def summarize_text(text):
-  summarizer = pipeline('summarization')
-  
-  num_iters = int(len(text)/1000)
-  summarized_text = []
-  for i in range(0,num_iters+1):
-    start = 0
-    start = i * 1000
-    end = (i+1) * 1000
-    out = summarizer(text[start:end],max_length=60)
-    out = out[0]
-    out = out['summary_text']
-    summarized_text.append(out)
-  
-  return summarized_text
+    summarizer = pipeline('summarization')
+
+    num_iters = int(len(text) / 1000)
+    summarized_text = []
+    for i in range(0, num_iters + 1):
+        start = i * 1000
+        end = (i + 1) * 1000
+        out = summarizer(text[start:end], max_length=60)
+        summarized_text.append(out[0]['summary_text'])
+
+    return " ".join(summarized_text)  # Combine into a single string
 
 
-# Mp4 video function
+# Mp4 Video Upload Function
 def Video_mp4_upload(request):
-  if request.method == "POST":
-    form = Video_mp4_form(data=request.POST,files=request.FILES)
-    if form.is_valid:
-      form.save()
-      latest_video = Video_mp4.objects.last()
+    if request.method == "POST":
+        form = Video_mp4_form(data=request.POST, files=request.FILES)
+        if form.is_valid():
+            form.save()
+            latest_video = Video_mp4.objects.last()
 
-      # Full path on the server
-      full_video_path = os.path.join(settings.MEDIA_ROOT, latest_video.video.name)
+            # Full path on the server
+            full_video_path = os.path.join(settings.MEDIA_ROOT, latest_video.video.name)
 
-      # URL accessible path
-      video_url = latest_video.video.url
+            # Convert video to audio
+            my_clip = mp.VideoFileClip(full_video_path)
+            my_clip.audio.write_audiofile("converted_audio.wav")
 
-      # converting video to audio
-      my_clip = mp.VideoFileClip(full_video_path)
-      my_clip.audio.write_audiofile(r"converted_audio.wav")
+            # Convert audio to text
+            aai.settings.api_key = "bd8a81fa6d0647a2bffdba1aa4284adc"
+            transcriber = aai.Transcriber()
+            transcript = transcriber.transcribe("converted_audio.wav")
 
-      # converting audio to text
-      aai.settings.api_key = "bd8a81fa6d0647a2bffdba1aa4284adc"
-      transcriber = aai.Transcriber()
-      transcript = transcriber.transcribe("converted_audio.wav")
+            # ✅ Check if transcript is valid
+            transcript_text = getattr(transcript, 'text', None)
+            if not transcript_text or not isinstance(transcript_text, str) or transcript_text.strip() == "":
+                return render(request, 'website/error.html', {
+                    'error_message': 'Transcription failed or returned no valid text.'
+                })
 
-      # calling summarization function
-      summarized_text = summariza_text(transcript.text)
+            # Summarize Text
+            summarized_text = summariza_text(transcript.text)
+            if not summarized_text or not isinstance(summarized_text, str):
+                return render(request, 'website/error.html', {
+                    'error_message': 'Summarization failed or returned empty.'
+                })
 
-      # Evaluate summary accuracy
-      accuracy = evaluate_summary(transcript.text, summarized_text)
+            # Evaluate Accuracy
+            accuracy_scores = evaluate_summary(transcript.text, summarized_text)
+
+            title = os.path.splitext(os.path.basename(full_video_path))[0]
+
+            return render(request, 'website/summarized_result.html', {
+                'title':title,
+                'summarized_text': summarized_text,
+                'text': transcript.text,
+                'accuracy_scores': accuracy_scores
+            })
+    else:
+        form = Video_mp4_form()
+    return render(request, 'website/Mp4_video.html', {'form': form})
 
 
-      return render(request,'website/summarized_result.html',{'summarized_text':summarized_text,'text':transcript.text,'accuracy':accuracy })
-  else:
-    form = Video_mp4_form()
-  return render(request,'website/Mp4_video.html',{'form':form})
-
-
-# YouTube url function
+# YouTube URL Upload Function
 def Video_url_upload(request):
-  if request.method == 'POST':
-    form = youtubeURL(request.POST)
-    if form.is_valid():
-      youtube_url = form.cleaned_data['youtube_url']
+    if request.method == 'POST':
+        form = youtubeURL(request.POST)
+        if form.is_valid():
+            youtube_url = form.cleaned_data['youtube_url']
 
-      # video to text conversion
-      youtube_id = youtube_url.split('=')[1]
+            # Extract Video ID
+            youtube_id = youtube_url.split('=')[1]
 
-      YouTubeTranscriptApi.get_transcript(youtube_id)
-      transcript = YouTubeTranscriptApi.get_transcript(youtube_id)
+            # Convert Video to Text
+            transcript = YouTubeTranscriptApi.get_transcript(youtube_id)
+            result = " ".join([i['text'] for i in transcript])
 
-      result = ""
-      for i in transcript:
-        result += ' ' + i['text']
+            # Summarize Text
+            summarized_text = summariza_text(result)
 
-      # calling summarization function
-      summarized_text = summariza_text(result)
+            # Evaluate Accuracy
+            accuracy_scores = evaluate_summary(result, summarized_text)
 
-      # Evaluate summary accuracy
-      accuracy = evaluate_summary(result, summarized_text)
-      
-      return render(request,'website/summarized_result.html',{'summarized_text':summarized_text ,'text':result,'accuracy':accuracy})
-  else:
-    form = youtubeURL()
-  return render(request,'website/Url_video.html',{'form':form})
+            title = get_youtube_title(youtube_url)
+
+            return render(request, 'website/summarized_result.html', {
+                'title': title,
+                'summarized_text': summarized_text,
+                'text': result,
+                'accuracy_scores': accuracy_scores
+            })
+    else:
+        form = youtubeURL()
+    return render(request, 'website/Url_video.html', {'form': form})
 
 
-# home page function
+def get_youtube_title(url):
+    try:
+        with yt_dlp.YoutubeDL({'quiet': True}) as ydl:
+            info = ydl.extract_info(url, download=False)
+            return info.get('title', 'No Title Found')
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+
+# Home Page Function
 def home(request):
-  return render(request,'website/index.html')
+    return render(request, 'website/index.html')

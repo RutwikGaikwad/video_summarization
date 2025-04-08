@@ -25,5 +25,5 @@ chat_session = model.start_chat(
 
 def summariza_text(result):
   # input
-  response = chat_session.send_message("summarize in one paragraph without asterisk :"+result)
+  response = chat_session.send_message("reduce by 40 percent in one paragraph without asterisk:"+result)
   return response.text
