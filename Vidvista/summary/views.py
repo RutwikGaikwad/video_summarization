@@ -24,6 +24,7 @@ from sentence_transformers import SentenceTransformer, util
 # Load Sentence Transformer Model (Optimized)
 model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
 
+# Feedback
 @login_required
 def feedback_view(request):
     if request.method == 'POST':
@@ -207,7 +208,7 @@ def Video_url_upload(request):
         form = youtubeURL()
     return render(request, 'website/Url_video.html', {'form': form})
 
-
+# Title extraction
 def get_youtube_title(url):
     try:
         with yt_dlp.YoutubeDL({'quiet': True}) as ydl:
