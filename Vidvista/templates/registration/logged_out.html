@@ -1,0 +1,15 @@
+{% extends "layout.html" %}
+
+{% block title %} Home Page {% endblock %}
+
+{% block content %}
+
+<main class="container">
+
+<h2>Logged out</h2>
+
+
+<p>You have been logged out <a href="{% url "login" %}">Login here</a></p>
+</main>
+
+{% endblock %}

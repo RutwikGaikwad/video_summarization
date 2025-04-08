@@ -19,17 +19,30 @@ body {
 
 
 /* Navbar */
-.navbar {
-    padding: 10px;
-    display: flex;
-    justify-content: flex-start;
-    position: absolute; /* Positions the navbar absolutely */
-    top: 10px; /* 10px from the top */
-    right: 10px; /* 10px from the right */
+.navbar-brand {
+    background-color: black;
+    color: white;
+    border: none;
+    padding: 5px 10px 5px 10px;
+    cursor: pointer;
+    border-radius: 5px;
+    font-size: 17px;
 }
 
-.navbar a {
-    color: white;
+.navbar-brand:hover {
+    background-color: grey;
+}
+/* .navbar {
+    padding: 10px;
+    display: flex;
+    justify-content: flex-start; */
+    /* position: absolute; Positions the navbar absolutely */
+    /* top: 10px; 10px from the top */
+    /* right: 10px; 10px from the right */
+/* } */
+
+/* .navbar a {
+    color: black;
     text-decoration: none;
     padding: 10px 20px;
     font-size: 18px;
@@ -37,8 +50,9 @@ body {
 
 .navbar a:hover {
     background: rgba(255, 255, 255, 0.3);
+    background-color: none;
     border-radius: 5px;
-}
+} */
 
 /* Header */
 header {
@@ -50,15 +64,15 @@ header {
 }
 
 /* Main Content */
-.container {
+/* .container {
     margin-top: 50px;
     padding: 30px;
-    /* background: rgba(255, 255, 255, 0.9); Changed to white background with opacity */
+    background: rgba(255, 255, 255, 0.9); Changed to white background with opacity
     width: 50%;
     border-radius: 10px;
     box-shadow: 0 0 10px rgba(207, 134, 134, 0.2);
     color: black;
-}
+} */
 
 /* Buttons */
 .tab, .summary-btn {

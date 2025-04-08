@@ -1,0 +1,16 @@
+{% extends "layout.html" %}
+
+{% block title %} Home Page {% endblock %}
+
+{% block content %}
+
+<div class="feedback-container">
+  <h2>Feedback Form</h2>
+  <form method="POST">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Submit Feedback</button>
+  </form>
+</div>
+
+{% endblock %}

@@ -1,9 +1,9 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.http import HttpResponse
-from .forms import youtubeURL, Video_mp4_form
+from .forms import youtubeURL, Video_mp4_form, UserRegistrationForm, FeedbackForm
 from transformers import pipeline
 from youtube_transcript_api import YouTubeTranscriptApi
-from .models import Video_mp4
+from .models import Video_mp4, User
 from .video import summariza_text
 import moviepy.editor as mp
 from django.conf import settings
@@ -13,6 +13,9 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.utils import simpleSplit
 import yt_dlp
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth import login
+from django.shortcuts import get_object_or_404
 
 # Accuracy Evaluation Imports
 from rouge_score import rouge_scorer
@@ -20,6 +23,35 @@ from sentence_transformers import SentenceTransformer, util
 
 # Load Sentence Transformer Model (Optimized)
 model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
+
+@login_required
+def feedback_view(request):
+    if request.method == 'POST':
+        form = FeedbackForm(request.POST)
+        if form.is_valid():
+            feedback = form.save(commit=False)
+            feedback.user = request.user
+            feedback.save()
+            # Process the data (e.g., save to database, send email, etc.)
+            # For now, just redirect to a thank-you page
+            return redirect('home')  # You should create a `thank_you` URL/view
+    else:
+        form = FeedbackForm()
+    return render(request, 'feedback/feedback.html', {'form': form})
+
+# User registeration 
+def register(request):
+  if request.method == 'POST':
+    form = UserRegistrationForm(request.POST)
+    if form.is_valid():
+      user = form.save(commit=False)
+      user.set_password(form.cleaned_data['password1'])
+      user.save()
+      login(request,user)
+      return redirect('home')
+  else:
+    form = UserRegistrationForm()
+  return render(request,'registration/register.html',{'form':form})
 
 # Function to Evaluate Summary Accuracy
 def evaluate_summary(original_text, summary_text):
@@ -113,7 +145,7 @@ def Video_mp4_upload(request):
             transcriber = aai.Transcriber()
             transcript = transcriber.transcribe("converted_audio.wav")
 
-            # ✅ Check if transcript is valid
+            # Check if transcript is valid
             transcript_text = getattr(transcript, 'text', None)
             if not transcript_text or not isinstance(transcript_text, str) or transcript_text.strip() == "":
                 return render(request, 'website/error.html', {
