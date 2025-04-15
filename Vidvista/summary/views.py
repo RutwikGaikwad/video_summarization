@@ -71,6 +71,8 @@ def evaluate_summary(original_text, summary_text):
 
     # Combine scores (50% weight to each)
     final_score = (rouge_score + cosine_score) / 2
+    # if final_score > 100:
+    #     final_score = max(rouge_score,cosine_score)
     return {
         "rouge_score": rouge_score,
         "cosine_similarity": cosine_score,
@@ -111,22 +113,9 @@ def download_summary(request):
 
     return response
 
-# Function to Summarize Text
-def summarize_text(text):
-    summarizer = pipeline('summarization')
-
-    num_iters = int(len(text) / 1000)
-    summarized_text = []
-    for i in range(0, num_iters + 1):
-        start = i * 1000
-        end = (i + 1) * 1000
-        out = summarizer(text[start:end], max_length=60)
-        summarized_text.append(out[0]['summary_text'])
-
-    return " ".join(summarized_text)  # Combine into a single string
-
 
 # Mp4 Video Upload Function
+@login_required
 def Video_mp4_upload(request):
     if request.method == "POST":
         form = Video_mp4_form(data=request.POST, files=request.FILES)
@@ -177,6 +166,7 @@ def Video_mp4_upload(request):
 
 
 # YouTube URL Upload Function
+@login_required
 def Video_url_upload(request):
     if request.method == 'POST':
         form = youtubeURL(request.POST)
@@ -216,6 +206,21 @@ def get_youtube_title(url):
             return info.get('title', 'No Title Found')
     except Exception as e:
         return f"Error: {str(e)}"
+    
+
+# Function to Summarize Text
+def summarize_text(text):
+    summarizer = pipeline('summarization')
+
+    num_iters = int(len(text) / 1000)
+    summarized_text = []
+    for i in range(0, num_iters + 1):
+        start = i * 1000
+        end = (i + 1) * 1000
+        out = summarizer(text[start:end], max_length=60)
+        summarized_text.append(out[0]['summary_text'])
+
+    return " ".join(summarized_text)  # Combine into a single string
 
 
 # Home Page Function
